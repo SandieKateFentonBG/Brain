@@ -123,7 +123,7 @@ class Brain:
     def init_theta(self):
 
         """
-
+        test
 
         """
         #creates theta_init randomly
