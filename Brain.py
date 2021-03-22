@@ -193,6 +193,7 @@ def test():
     b.learn(xs[:1], ys[:1])
     # full: 1h20 and no result ; for 10: 7mins nothing (x500 : 1min -> 8h20) ; for 1: 6mins nothing (1 min -> 3.5 days)
     # errors? or need quicker process? can we group cost&grad?   -- explore what takes time
+    # sigmoid -relu
     print(b.error_rate(xs, ys))
 
 

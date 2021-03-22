@@ -33,8 +33,7 @@ class Brain:
     * : during computation a bias term is added at the start of each layer,
     it acts like a constant which helps the model to fit the given data ("ordonnée à l'origine").
     The bias term is NOT included in the layers_size
-                                                                                                               #MOVE
-
+                                                                                                                            #MOVE
     The bias term is only propagated forwards, and not backpropagated; this can be explained:
     - "materially" : all links connected to a bias term exist downstream from the bias;
     - "mathematically" : when computing gradient descent, bias terms "disappear" - "derivative of constant = 0" ;
@@ -93,7 +92,7 @@ class Brain:
         self.nodes = []
 
     """
-    2. Think
+    2. Think :
 
     INPUT : X, theta
     MAIN : forward propagation
@@ -116,7 +115,7 @@ class Brain:
      
     """
 
-    def layer_up(self):
+    def layer_up(self, activation=sigmoid):                                        #add option to change the activator, should these be self. ? should this be done for both FP and BP?
 
         """
         Layer up allows to forward propagate values in one layer (l) to the next (l+1).
@@ -134,24 +133,23 @@ class Brain:
         Output : updated nodes matrix, with values for latest step
 
         """
-        # values = a
+
         last_completed_layer = len(self.nodes) - 1
         theta_l = self.theta[last_completed_layer]
         last_completed_values = self.nodes[last_completed_layer]
         next_layer_values = []
         for i in range(len(theta_l)):
-            # z = theta_1*a_1
-            z_value = sum([a * b for a, b in zip(theta_l[i], [1] + list(last_completed_values))])
-            # a_2 = g(z)
-            next_layer_values.append(sigmoid(z_value))
+            z_value = sum([theta_i * a_i for theta_i, a_i in zip(theta_l[i], [1] + list(last_completed_values))])
+            #next_layer_values.append(sigmoid(z_value))
+            next_layer_values.append(activation(z_value))                                                       # change
         self.nodes.append(next_layer_values)
 
     def forward(self, x):
 
         """
+        The forward propagation is used to compute the values of the nodes in the successive layers,
+        performed on ONE example at a time (think at one thing at a time)
 
-        The forward propagation is used to compute the values of the nodes in the successive layers.
-                                                                                                                                Forward is done for 1 X????
         Node values are obtained by propagating values in input layer(x), layer by layer, until reaching output layer(y).
         Propagation of values requires having a network parameters matrix theta, to link each step.
         Propagation of values is done by calling the "layer-up" function for each step.
@@ -183,7 +181,7 @@ class Brain:
             - features (x)
             - parameters (theta)
             - bias terms (theta_0, 1,..)
-        Hypothesis functions can consist in polynomial functions
+        Hypothesis functions can take many forms : linear functions of single or multiple variables, polynomial functions
         ex : for linear regression  - h_theta(x) = t0 + t1x + t2x(exp2)
         Hypothesis functions can consist in "neural networks functions"
         ex : h_theta(x) = T * X
@@ -191,34 +189,49 @@ class Brain:
         Cost function(J) measures the accuracy of our model, "how well the hypothesis fct maps the training data".
         Cost is a function of the error (e = h_theta(x)-y)
         Error is the difference between values predicted with the hypothesis function, and the "actual/true" values.
-        Cost value is computed from the error in various ways, one way is to use the mean squared error MSE function.
+        Cost is computed from the error in various ways, formulation of cost functions include : MSE(mean squared error), L-norms,...
 
-        When trying to make a model representation of our data, two problems can occur :
+        When working with large dataset, to verify good results, common practice is to work with training and testing subsets.
+        The Generalized Error is the difference between costs computed from training and testing subsets,GE = J(training set) - J(testing set)
+        To assess the quality of a model representation, both the individual costs and the GE should be checked :
+        - GE, J(tr), J(te) = low : good fit model representation
+        - J(tr), J(te) = high : underfit model representation
+        - J(tr) = low, J(te) = high : overfit model representation
 
-        - underfitting or high bias :
-        the form of h_theta(x) maps poorly the data trend, due to a function that is too simple, uses too few features..
-        "flat model" : way too imprecise, approximations made are excessive, data points are missed out;
+        underfit model or high bias:
+        the form of h_theta(x) maps poorly the data trend, due to excessive approximations, oversimplified function, too few features..
+        "flat model" : way too imprecise, data points are missed out;
+        solution: changing the hypothesis function, increasing the number of features or reducing the regularization parameter(*).
 
-        - overfitting or high variance :
-        the form of h_theta(x) fits the available data but doesn't generalize well to predict new data,
+        overfit model or high variance : the form of h_theta(x) fits the available data but doesn't generalize well to predict new data,
         often due to a complicated function that creates a lot of unnecessary curves and angles unrelated to the data
         "mountain model": the model bounces up and down and spirals unnecessarily between every point;
-        Depending on the scenario, overfitting can be solved by reducing the number of features or by regularization.
+        Overfitting can be solved by reducing the number of features or by or increasing the regularization parameter(*).
 
-        Regularization is used to tackle the problem of overfitting by reducing the variance of the hypothesis function
-        It consists in smoothing the hypothesis function by reducing the influence/magnitude of theta parameters,
-        without getting rid of parameters and without changing the form of the model.
-        It is obtained by introducing a regularization parameter lambda (l) to inflate the price of parameters.
-        To ensure minimal cost, if parameters are expensive, their magnitude must be reduced (*)
+        (*) Regularization is a change in the formulation of J to reach a good fit between h_theta(x) and training data,
+        Mostly used to solve overfitting, it reduces the variance of h_theta(x) by penalizing -high values of selected- features.
+        The smoothing of h_theta(x) is achieved by reducing the magnitude of theta parameters, and thus the influence of matching x features
+        The change is done without getting rid of parameters and without changing the form of the model,
+        It consists in adding a regularization term t = l*r(theta_k) to the cost function J, where:
+         - l: lambda, the regularization parameter used to inflate the price of parameters (2*)
+         - r(): the chosen regularization function, ex : ridge regularization
+         - theta_k : the chosen regularization parameters, that will be penalized,
+            Penalization can be applied to all parameters, or to a selected portion, but is not applied on theta_0 (the bias term)              ??
 
-        Regularization is applied:                                      ???
-        - in the formulation of the cost function,
-        - in the formulation of gradient descent
-        - not on bias term, since it should not be penalized
+        Crossvalidation is used to find the value of lambda that ensures a good fit and is performed as follows:
+            1. divide your data set x in a training subset x_tr and a testing subset x_te
+            2. pick a value of lambda, and compute the theta parameters matrix with the training set : theta_try
+            3. with this theta matrix, compute cost with training and testing subsets and compute the Generalized Error:
+            4. GE = J_tr(theta_try) - J_te(theta_try)
+                if GE >> : the model is overfitting, repeat steps with higher value of lambda
+                if GE << : the model is underfitting, repeat steps with lower value of lambda
 
-        "giving a higher price to high theta values, and thus forcing the magnitudes of theta values to be reduced"
+        For neural networks, regularization is applied in an identical way, and is called weight decay.
 
-        (*) For a target cost, the higher the value of the lambda, the lower the magnitude of theta:
+
+        (2*) To ensure minimal cost, if parameters are expensive, their magnitude must be reduced
+        "By giving a higher price to high theta values, we force the magnitudes of theta values to decrease"
+        For a target cost, the higher the value of the lambda, the lower the magnitude of theta:
             unregularized cost J_u = f(sum(t_u))
             regularized cost J_r = f(sum(lambda*t_r))
             Minimize J_r ? if lambda >> then t_r <<
@@ -230,7 +243,7 @@ class Brain:
         """
         
         Cost function computes the (random)cost corresponding to the (randomly)defined model representation.
-        Cost is computed by averaging the costs of ALL training data                                                        ALL??
+        Cost is computed by averaging the costs of ALL training data
         Cost should always be minimal, if the cost is too high, the model representation should be improved:
             - by recalibrating theta
             - by changing the regularization
@@ -317,26 +330,60 @@ class Brain:
     def backward(self, y):
 
         """
-        The backward propagation is used to compute the errors associated to the nodes in the successive layers.
+        The backward propagation is used to compute the errors associated to the nodes in the successive layers,
+        performed on ONE example at a time (think at one thing at a time)
 
         Error values are obtained by propagating values from output layer(y), layer by layer, until reaching the first hidden layer(l).
-        Propagation of values requires having activation node values a network parameters matrix theta, to link each step.
+        No error is computed on the input layer, since there is no reason to compute an error on input "true" measures.
 
+        When using gradient-based learning methods, this propagation is obtained by attributing to each of the weights,
+        an update proportional to the partial derivative of the error function with respect to the current weight.
+        It can be demonstrated that the partial derivative of the sigmoid function can be expressed as g'(z) = a * (1-a)
+        The coefficient by which partial derivatives are multiplied is the value of the network parameters matrix theta.
 
-        --------------------------------------------------------------------------------------------------------------
+        Propagation of values therefore requires having computed activation node values, in the forward propagation
+        and having an initial network parameters matrix theta, to link each step.
 
         ---------------------------------------------------------------------------------------------------------------
 
-        Input : -
-        Output : theta network matrix
+        Steps performed on each INDIVIDUAL example can be resumed as follows, with L = output_layer and a[L]=y_pred :
+
+            output_error = a[L]-y
+            error [L-1] = a[L] * (1-a[L]) *
+
+            error [4] = a[4] - y
+            error [3] = theta [3] * error [4] * g'(z[3])
+                      = theta [3] * error [4] * a[3] * (1-a[3])
+            error [2] = theta [2] * error [3] * g'(z[2])
+                      = theta [2] * error [3] * a[2] * (1-a[2])
+
+            total_error = sum of all errors
+        The iteration is made from before last layer
+
+
+        # values = a
+        # z = theta_1*a_1
+        # a_2 = g(z)
+
+        Comment :
+        last_layer_index : layer_count - 1
+        before_last_layer_index : layer_count - 2
+
+        iteration is made backwards using "range":
+        - start : index of before_last_layer : layer_count - 2
+        - stop :  index of first layer omitted : 0
+        - step : -1 (proceed backwards)
+
+        ---------------------------------------------------------------------------------------------------------------
+
+        Input : y
+        Output : matrix of errors for the test example
 
         """
 
         errors = [[self.nodes[-1][i] - y[i] for i in range(len(y))]]
         for layer in range(self.layers_count - 2, 0, -1):
-
             #  g'(z) = a * (1-a)
-
             errors.append([self.nodes[layer][j] * (1 - self.nodes[layer][j]) *
                            sum([errors[-1][i] * self.theta[layer][i][j + 1] for i in range(self.layers_size[layer + 1])])
                            for j in range(self.layers_size[layer])])
@@ -346,6 +393,23 @@ class Brain:
     def gradient_bp(self, xs, ys, theta):
 
         """
+        The gradient descent function performs a backpropagation of error on each example is used to calls the back
+        #takes backward
+        #takes compute
+        #return error
+
+                self.pump_it(theta)
+        #on copie la dim de theta pour construire notre matrice de grad
+        grads = [[[0 for spot in grad_l_i] for grad_l_i in grad_l] for grad_l in self.theta]
+        for index in range(len(xs)):
+            #on complete le matrice des gradient avec un premier exemple, ensuite on itere a travers tous les exemples et on ajoute toutes les valeurs et a la fin on divise par m)
+            self.forward(xs[index])
+            errors = self.backward(ys[index])
+            grads = [[[([1] + list(self.nodes[lay]))[j] * errors[lay + 1][i] + grads[lay][i][j] for j in range(len(grads[lay][i]))]
+                      for i in range(len(grads[lay]))] for lay in range(len(grads))]
+        return self.flat_it([[[val / len(xs) for val in grad_l_i] for grad_l_i in grad_l] for grad_l in grads])
+        #takes forward (copy from cost)
+
 
         In ANN with gradient-based learning methods and backpropagation,
         each of the neural networks weights receives an update proportional to the partial derivative
@@ -354,6 +418,11 @@ class Brain:
         ---------------------------------------------------------------------------------------------------------------
 
         uses:
+
+        ---------------------------------------------------------------------------------------------------------------
+
+        Input : -
+        Output : theta network matrix
 
         """
 
@@ -368,10 +437,6 @@ class Brain:
                       for i in range(len(grads[lay]))] for lay in range(len(grads))]
         return self.flat_it([[[val / len(xs) for val in grad_l_i] for grad_l_i in grad_l] for grad_l in grads])
         #takes forward (copy from cost)
-
-        #takes backward
-        #takes compute
-        #return error
 
     def learn(self, xs, ys, reg=0, reset=False):
 
@@ -428,7 +493,7 @@ class Brain:
     The choice of adequate AF can depend on the preferred slope of the remapped values( sigmoid slope == inf; Relu slope == 1),
     or on other advantages/disadvantages expressed by the individual AFs.
 
-    Why do we need values in 0-1/0-inf for NN > they are a succession of classification problems > 1 most likely value per step?
+                                                        Why do we need values in 0-1/0-inf for NN > they are a succession of classification problems > 1 most likely value per step?
     
     """
 
